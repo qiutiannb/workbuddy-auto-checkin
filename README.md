@@ -266,32 +266,6 @@ WORKBUDDY_ACCESS_TOKEN
 
 要让失败时收到邮件：打开 [GitHub 通知设置](https://github.com/settings/notifications)，把 Actions 的邮件打开，可以只接收失败。
 
-### 选做：仓库只想自己看见
-
-上面的 Fork 别人能打开页面和日志，看不见 Secret。如果你连日志也不想被人看见，另外新建一个 **Private**（私有）仓库，不要把 Fork 改成私有，GitHub 不允许这样做。私有仓库不计 Fork。
-
-1. 回到 [原仓库](https://github.com/suows/workbuddy-auto-checkin) 点 **Star**。
-2. 点 GitHub 右上角 **+ → New repository**。仓库名自定，可见性选 **Private**，不要勾选添加 README。点 **Create repository**。
-3. 页面上会给出一段把代码推上去的命令。先在电脑上安装 [Git](https://git-scm.com/downloads)，打开终端，执行：
-
-```bash
-git clone --depth 1 https://github.com/suows/workbuddy-auto-checkin.git
-cd workbuddy-auto-checkin
-git checkout --orphan fresh
-git add -A
-git commit -m "Start from workbuddy-auto-checkin"
-git branch -M main
-git remote set-url origin https://github.com/你的用户名/你的私有仓库.git
-git push -u origin main
-```
-
-把最后一行的地址换成你刚建的私有仓库地址。GitHub 要求登录时，按页面提示用浏览器登录。
-
-4. 从本手册第 3 步做起，把「你的 Fork」理解成「你的私有仓库」。
-5. 只有这种别人打不开的仓库，才可以在想看账户总额时，到 **Settings → Secrets and variables → Actions → Variables** 新建 `WORKBUDDY_SHOW_BALANCE`，值填 `1`。
-
-以后原仓库更新了，再执行一次上面的克隆，把新文件拷进私有仓库。不要把 `workbuddy-desktop.info` 一起提交。
-
 ## 技术说明
 
 Python 3.12，只用标准库，没有第三方依赖，也没有前端。定时任务在 GitHub Actions 上跑。登录态只放在仓库 Secrets 里。
@@ -334,8 +308,6 @@ Actions 上默认不打印账户总额、对比基准和历史签到日期。日
 - 真实余额的增长额、失效额
 - 今日活跃分，以及有没有补上对话
 
-本机直接运行脚本时，仍会打印账户总额。只有你自己能看的仓库，如果也想在 Actions 日志里看总额：到 **Settings → Secrets and variables → Actions → Variables**，新建 `WORKBUDDY_SHOW_BALANCE`，值填 `1`。别人也能打开这个仓库时，不要设这个变量。
-
 ### 退出码
 
 | 退出码 | 含义 | 怎么处理 |
@@ -347,38 +319,6 @@ Actions 上默认不打印账户总额、对比基准和历史签到日期。日
 | 4 | 积分没增加 100，或余额没增长 | 打开日志看增长额。日志里的「轻轻路过」表示活跃地图已经点亮 |
 
 accessToken 过期后，如果 Secret 里有 refreshToken 或整份未加密登录 JSON，脚本会先换一张新 accessToken 再重试。新 token 只在这一次运行里使用，不会写回仓库。登录文件里已经没有可复制的 token 时，用手册里的短信办法换一行新的 refreshToken，更新到 `WORKBUDDY_ACCESS_TOKEN`。
-
-### 只想自己剪出 token 时
-
-手册第 5 步粘贴整份文件即可。如果你只想保存两段文字，在登录文件里搜索这两个字段：
-
-- `auth.accessToken` 或 `accessToken`
-- `account.uid` 或 `uid`
-
-复制引号里面的内容，不要带两侧的引号。`WORKBUDDY_ACCESS_TOKEN` 填 token，另外新建 `WORKBUDDY_UID` 填 uid。可选的 Secret 还有：`WORKBUDDY_REFRESH_TOKEN`（单独的 refreshToken，填写后优先用它换新 accessToken）、`WORKBUDDY_DOMAIN`（默认 `www.codebuddy.cn`）、`WORKBUDDY_ENTERPRISE_ID`（仅企业账号）。
-
-Windows 可以用 PowerShell 核对找对了文件。它只打印 uid 和 token 末四位，不要把输出发到网上：
-
-```powershell
-$p = "$env:LOCALAPPDATA\CodeBuddyExtension\Data\Public\auth\workbuddy-desktop.info"
-$j = Get-Content -Raw $p | ConvertFrom-Json
-"uid=$($j.account.uid)"
-"token_tail=$($j.auth.accessToken.Substring($j.auth.accessToken.Length-4))"
-```
-
-### 本地试跑
-
-只在本机跑时，电脑要开着，也不会出现在原仓库的 Fork 列表里。要每天自动跑，用上面的 Fork。不要把 token 写进文件再提交。
-
-```bash
-export WORKBUDDY_ACCESS_TOKEN='你的 token'
-export WORKBUDDY_UID='你的 uid'
-python3 scripts/checkin.py --status   # 只查询
-python3 scripts/checkin.py            # 查询后领取
-python3 scripts/test_checkin.py       # 不访问网络的测试
-```
-
-本地账本默认写到 `docs/wallet-daily.json`。这个文件已在 `.gitignore` 里。格式见 `docs/wallet-daily.example.json`。换路径可以设置 `WORKBUDDY_WALLET_LEDGER`。
 
 ### 保管好登录态
 
